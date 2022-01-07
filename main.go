@@ -6,15 +6,11 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
+	"strings"
 	"time"
 )
-
-//add a timer. The  time limit should be 30 seconds,
-//customiz timer by flag
-//Quiz should stop as soon as the time limit has execeeded
-//Users should be asked to press enter (or some other key)
- 
 const 
 (
 	defaultFilename ="Problems.csv"
@@ -28,6 +24,7 @@ type question struct{
 
 type result struct{
 	questionLen int
+	answerLen int
 	correct int
 	incorrect int
 }
@@ -35,12 +32,17 @@ type result struct{
 func main(){	
  
 
-	name := flag.String("name", defaultFilename, "File name")
-	timer := flag.Int("time", defaultTime, "timer for quiz  default 3s")
+	flagname := flag.String("name", defaultFilename, "File name")
+	flagtimer := flag.Int("time", defaultTime, "timer for quiz  default 3s")
+	flagShuffle := flag.Bool("s", false, "Shuffle the quiz questions ")
+
     flag.Parse()
-	data := readCSV(*name)
-	quizP2(data, *timer)
-}
+	data := readCSV(*flagname)
+	if *flagShuffle{
+       shuffle(data)
+	}
+	quizP2(data, *flagtimer)
+} 
 
 //getCSVdata open csv file  by name  and return the data from it
 func readCSV(name string)[]question{
@@ -72,9 +74,9 @@ func quizP2(questions []question, timer int){
 	go  ask(cancle, questions, &r)
 	select{
 		case <-time.After(time.Second * time.Duration(timer)):
-			fmt.Printf("\nTime out \nNumber of questions: %v \nNumber of correct answer : %v \nNumber of incorrect answer: %v\n", r.questionLen , r.correct, r.incorrect)	
+			fmt.Printf("\nTime out \nQuestions: %v \\ %v \nNumber of correct answer : %v \nNumber of incorrect answer: %v\n", r.questionLen, r.answerLen , r.correct, r.incorrect)	
 		case <- ctx.Done():
-			fmt.Printf("\nNumber of questions: %v \nNumber of correct answer : %v \nNumber of incorrect answer: %v\n", r.questionLen, r.correct, r.incorrect)	
+			fmt.Printf("Questions: %v \\ %v \nNumber of correct answer : %v \nNumber of incorrect answer: %v\n", r.questionLen, r.answerLen , r.correct, r.incorrect)	
 	}
 }
 
@@ -86,14 +88,21 @@ func ask(cancle context.CancelFunc , questions []question, r  *result )  {
 
 		fmt.Printf("Q.%v %v ",(i+1), v.question)
 		scanner.Scan()
-	    ans = scanner.Text()
-		if ans == v.answer{
+	    ans =  strings.TrimSpace(scanner.Text())
+		r.answerLen ++
+		if ans == strings.TrimSpace(v.answer){
 			r.correct ++
 			continue
 		}
  
 		r.incorrect ++
+		
 	
 	}
 	cancle()
+}
+
+func shuffle(s []question){
+	rand.Seed(time.Now().UnixNano())
+   rand.Shuffle(len(s), func(i, j int ){ s[i], s[j] = s[j], s[i]})
 }
